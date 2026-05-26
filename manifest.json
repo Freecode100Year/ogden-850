@@ -1,0 +1,33 @@
+{
+  "id": "/",
+  "name": "Ogden Basic English 850",
+  "short_name": "Ogden 850",
+  "description": "850 个 Basic English 核心词，中英双语、可发音、可卡片练习。",
+  "lang": "zh-CN",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#faf6ed",
+  "theme_color": "#faf6ed",
+  "categories": ["education", "books"],
+  "icons": [
+    {
+      "src": "/icons/ogden-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/ogden-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/ogden-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
