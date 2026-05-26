@@ -1288,13 +1288,24 @@ function stopSpeaking() {
   if (currentBtn) { currentBtn.classList.remove('playing'); currentBtn = null; }
 }
 
+function speakBrowser(text, rate, onEnd) {
+  if (!window.speechSynthesis) { onEnd(); return; }
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = audioSource === 'us' ? 'en-US' : 'en-GB';
+  u.rate = rate || 1.0;
+  u.onend = onEnd;
+  u.onerror = onEnd;
+  window.speechSynthesis.speak(u);
+}
+
 function speak(text, rate, btn) {
   stopSpeaking();
   if (btn) { btn.classList.add('playing'); currentBtn = btn; }
   const clear = () => { if (btn) btn.classList.remove('playing'); if (currentBtn === btn) currentBtn = null; };
   const primaryUrl = buildServerTtsUrl(text, rate);
   const fallbackUrl = buildGoogleTtsUrl(text);
-  playAudioUrl(primaryUrl, clear, () => playAudioUrl(fallbackUrl, clear, clear));
+  playAudioUrl(primaryUrl, clear, () => playAudioUrl(fallbackUrl, clear, () => speakBrowser(text, rate, clear)));
 }
 
 function buildServerTtsUrl(text, rate) {
