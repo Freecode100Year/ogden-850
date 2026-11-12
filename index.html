@@ -1283,12 +1283,46 @@ const SYNS_DETAIL = window.SYNS_DETAIL || {};
 const TTS_ENDPOINT = '/api/tts';
 const TTS_VERSION = '20260525-jenny';
 
+// Offline Android app (android/): every word and sentence is pre-recorded under
+// audio/uk|us/<cyrb53 of the text>.ogg (tools/gen_audio.py); anything missing is read
+// by the phone's own text-to-speech through window.AndroidTTS. The website is unchanged.
+const IN_APP = typeof window.AndroidTTS !== 'undefined';
+let nativeDone = null;
+window.__ogdenTtsDone = () => { const f = nativeDone; nativeDone = null; if (f) f(); };
+
+function cyrb53(str, seed = 0) {
+  let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed;
+  for (let i = 0, ch; i < str.length; i++) {
+    ch = str.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return 4294967296 * (2097151 & h2) + (h1 >>> 0);
+}
+
+function localAudioUrl(text) {
+  return 'audio/' + (audioSource === 'us' ? 'us' : 'uk') + '/' + cyrb53(text).toString(16) + '.ogg';
+}
+
+// The phone's own voice. Returns false when the phone has no usable English voice.
+function speakNative(text, rate, onEnd) {
+  if (!IN_APP) return false;
+  nativeDone = onEnd;
+  const ok = window.AndroidTTS.speak(text, audioSource === 'us' ? 'en-US' : 'en-GB', rate || 1.0);
+  if (!ok) nativeDone = null;
+  return ok;
+}
+
 function stopSpeaking() {
   if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+  if (IN_APP) { nativeDone = null; window.AndroidTTS.stop(); }
   if (currentBtn) { currentBtn.classList.remove('playing'); currentBtn = null; }
 }
 
 function speakBrowser(text, rate, onEnd) {
+  if (speakNative(text, rate, onEnd)) return; // Android WebView has no speechSynthesis
   if (!window.speechSynthesis) { onEnd(); return; }
   window.speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
@@ -1303,9 +1337,14 @@ function speak(text, rate, btn) {
   stopSpeaking();
   if (btn) { btn.classList.add('playing'); currentBtn = btn; }
   const clear = () => { if (btn) btn.classList.remove('playing'); if (currentBtn === btn) currentBtn = null; };
-  const primaryUrl = buildServerTtsUrl(text, rate);
-  const fallbackUrl = buildGoogleTtsUrl(text);
-  playAudioUrl(primaryUrl, clear, () => playAudioUrl(fallbackUrl, clear, () => speakBrowser(text, rate, clear)));
+  const online = () => playAudioUrl(buildServerTtsUrl(text, rate), clear,
+    () => playAudioUrl(buildGoogleTtsUrl(text), clear, () => speakBrowser(text, rate, clear)));
+  if (IN_APP) {
+    // App: bundled recording, then the phone's voice, then online as a last resort.
+    playAudioUrl(localAudioUrl(text), clear, () => { if (!speakNative(text, rate, clear)) online(); });
+    return;
+  }
+  online();
 }
 
 function buildServerTtsUrl(text, rate) {
@@ -1332,10 +1371,15 @@ function toServerRate(text, rate) {
 }
 
 function playAudioUrl(url, onEnded, onFailed) {
-  currentAudio = new Audio(url);
-  currentAudio.onended = onEnded;
-  currentAudio.onerror = onFailed;
-  currentAudio.play().catch(onFailed);
+  const a = new Audio(url);
+  currentAudio = a;
+  // play() rejecting and the error event both report the same failure: fall back once,
+  // and not at all if another word has started meanwhile.
+  let failed = false;
+  const fail = () => { if (failed || currentAudio !== a) return; failed = true; onFailed(); };
+  a.onended = onEnded;
+  a.onerror = fail;
+  a.play().catch(fail);
 }
 
 document.addEventListener('click', e => {

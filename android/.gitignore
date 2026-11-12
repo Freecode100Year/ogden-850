@@ -1,0 +1,8 @@
+app/src/main/assets/
+keystore.properties
+*.jks
+.gradle/
+build/
+app/build/
+local.properties
+ogden-850.apk
