@@ -2,10 +2,14 @@ export async function onRequestGet(context) {
   const url = new URL(context.request.url);
   const text = url.searchParams.get('text');
   const accent = url.searchParams.get('accent') || 'uk';
-  const rate = url.searchParams.get('rate') || '+0%';
 
-  if (!text) {
+  if (!text || !text.trim()) {
     return new Response('Missing text', { status: 400 });
+  }
+  // Google's endpoint reads at most ~200 characters; the longest text on the page is
+  // far shorter, so anything longer is not ours.
+  if (text.length > 200) {
+    return new Response('Text too long', { status: 413 });
   }
 
   const lang = accent === 'us' ? 'en-US' : 'en-GB';

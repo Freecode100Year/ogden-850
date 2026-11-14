@@ -709,7 +709,9 @@ footer a:hover { text-decoration: underline; }
   .search { min-width: 100%; order: -1; }
   .pills { overflow-x: auto; flex-wrap: nowrap; width: 100%; padding-bottom: 2px; }
   .pill { min-height: 36px; display: inline-flex; align-items: center; }
+  .section-header { flex-wrap: wrap; gap: 4px 12px; }
   .section-header h2 { font-size: 26px; }
+  .section-header .zh { font-size: 15px; }
   .grid { grid-template-columns: 1fr; }
   .hans-toggle { display: none; }
   .flash-btn { display: inline-flex; align-items: center; min-height: 40px; }
@@ -1746,7 +1748,8 @@ document.addEventListener('keydown', e => {
   }
 });
 
-if ('serviceWorker' in navigator) {
+// Website only: the Android app already serves everything from the APK.
+if ('serviceWorker' in navigator && !IN_APP && location.protocol === 'https:') {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').catch(() => {});
   });
